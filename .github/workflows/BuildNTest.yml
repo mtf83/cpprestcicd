@@ -1,0 +1,50 @@
+on: [push]
+env:
+  PORT: 9999
+  PUBLIC_PORT: 8888
+  ANY_PORT: 7777
+  HUNG_PORT: 5555
+jobs:
+  build:
+    name: Build and Test Cpp Rest
+    runs-on: ubuntu-latest
+    container:
+      env:
+        HANG_PORT: 6666
+        SERVER_CRT_FILE: "/app/server.crt"
+        SERVER_KEY_FILE: "/app/server.key"
+        CER_EXPIRE: 365
+        RSA_PARAM: 2048
+        PEM_PASSWORD: "mtf83"
+        DH_FILE: "/app/dh"
+        DH_PARAM: 2048
+      image: ghcr.io/mtf83/cpprestci:v1
+      ports:
+        - 8888:9999
+        - 7777:5555
+      volumes:
+        - ${{ github.workspace }}:/myproject
+    steps:
+      - name: Before check out
+        run: |
+          cd $GITHUB_WORKSPACE
+          pwd
+          echo $GITHUB_WORKSPACE
+          ls
+      - name: Check out
+        uses: actions/checkout@v3
+      - name: After check out
+        run: |
+          cd $GITHUB_WORKSPACE
+          pwd
+          echo $GITHUB_WORKSPACE
+          ls
+      - name: build source
+        shell: bash
+        run: |
+          cd $GITHUB_WORKSPACE
+          pwd
+          cp /usr/local/lib/libcpprest.so.2.10 /usr/local/lib/libcpprest.so
+          cd /myproject
+          g++ -D __MYREST_NEED_BOOST_ASIO_ -L /usr/local/lib -I casablanca/Release/include -std=c++11 myrest.cpp -o myrest -lcrypto -lssl -lcpprest -pthread
+          ./myrest $HUNG_PORT $SERVER_CRT_FILE $SERVER_KEY_FILE $DH_FILE$DH_PARAM.pem

@@ -1,5 +1,10 @@
-#include "../Release/include/cpprest/http_listener.h"
-#include "../Release/include/cpprest/json.h"
+#ifdef __MYREST_NEED_BOOST_ASIO_
+    #define BOOST_ASIO_SEPARATE_COMPILATION
+    #define BOOST_ASIO_STANDALONE
+    #define CPPREST_FORCE_HTTP_LISTENER_ASIO
+#endif
+#include "cpprest/http_listener.h"
+#include "cpprest/json.h"
 #include <iostream>
 #include <boost/asio/impl/src.hpp>
 #include <boost/asio/ssl/impl/src.hpp>
@@ -60,9 +65,12 @@ void handle_delete(http_request request) {
     TRACE("\nhandle DELETE\n");
 }
 
-int main() {
+int main(int argc, char* argv[]) {
     http_listener_config listen_config;
-    listen_config.set_ssl_context_callback([](ssl::context& ctx) {
+    string sServCertFileName(argv[2]);
+    string sServKeyFileName(argv[3]);
+    string sTmpDHFileName(argv[4]);
+    listen_config.set_ssl_context_callback([&](ssl::context& ctx) {
         try {
             std::clog << "set_ssl_context_callback" << std::endl;
             ctx.set_options(ssl::context::default_workarounds |
@@ -76,11 +84,11 @@ int main() {
                 });
             //ctx.use_certificate_chain_file("c:\\ca-certificate.pem.txt");
             //ctx.use_private_key_file("c:\\ca-key.pem.txt", ssl::context::pem);
-            ctx.use_certificate_file("/home/u/server.crt", ssl::context::pem);
-            ctx.use_private_key_file("/home/u/server.key", ssl::context::pem);
+            ctx.use_certificate_file(sServCertFileName, ssl::context::pem);
+            ctx.use_private_key_file(sServKeyFileName, ssl::context::pem);
             //ctx.use_certificate_chain_file("server.key");
             //ctx.use_private_key_file("server.key", ssl::context::pem);
-            ctx.use_tmp_dh_file("/home/u/dh2048.pem");
+            ctx.use_tmp_dh_file(sTmpDHFileName);
             std::clog << "leave set_ssl_context_callback" << std::endl;
         }
         catch (std::exception const& e) {
@@ -89,7 +97,9 @@ int main() {
         });
 
     listen_config.set_timeout(utility::seconds(10));
-    http_listener listener(U("https://localhost:10022")
+    string uri("http://localhost:");
+    uri += argv[1];
+    http_listener listener(utility::conversions::to_string_t(uri)
         , listen_config
     ); // Server URL, Port .
 
